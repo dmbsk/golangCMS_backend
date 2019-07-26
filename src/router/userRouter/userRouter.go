@@ -13,5 +13,7 @@ func Init(router *mux.Router) *mux.Router {
 
 	router.HandleFunc("/users/{id}", UserEndPoint).Methods("GET")
 
+	router.HandleFunc("/users/sign-in", UserSignIn).Methods("POST")
+
 	return router
 }

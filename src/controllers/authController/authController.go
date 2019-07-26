@@ -1,24 +1,29 @@
 package authController
 
 import (
-	"net/http"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/mitchellh/mapstructure"
 	"github.com/gorilla/context"
+	"github.com/mitchellh/mapstructure"
 
-	. "../../models/userModel"
-	"../../models/tokenModel"
-	. "../../respondFormating"
 	"strings"
+
+	"../../models/tokenModel"
+	. "../../models/userModel"
+	. "../../respondFormating"
 )
 
 func CreateTokenEndPoint(w http.ResponseWriter, r *http.Request) {
 	var user UserModel
 	_ = json.NewDecoder(r.Body).Decode(&user)
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{})
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id": user.ID,
+		"username": user.Username,
+		"password": user.Password,
+	})
 	tokenString, err := token.SignedString([]byte("secret"))
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, "Error generating token")
@@ -46,13 +51,13 @@ func ProtectedEndPoint(w http.ResponseWriter, r *http.Request) {
 // nie rozumiem tego :/
 func ValidateMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		authorizationHeader := req.Header.Get("authorization")
+		authorizationHeader := req.Header.Get("Authorization")
 		if authorizationHeader != "" {
 			bearerToken := strings.Split(authorizationHeader, " ")
 			if len(bearerToken) == 2 {
 				token, err := jwt.Parse(bearerToken[1], func(token *jwt.Token) (interface{}, error) {
 					if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-						return nil, fmt.Errorf("There was an error")
+						return nil, fmt.Errorf("there was an error")
 					}
 					return []byte("secret"), nil
 				})
@@ -63,6 +68,7 @@ func ValidateMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				if token.Valid {
 					context.Set(req, "decode", token.Claims)
 					next(w, req)
+					RespondWithJson(w, http.StatusOK, map[string]string{"result": "success"})
 				} else {
 					RespondWithError(w, http.StatusUnauthorized, "Invalid authorization token")
 				}
@@ -76,6 +82,12 @@ func ValidateMiddleware(next http.HandlerFunc) http.HandlerFunc {
 func TestEndpoint(w http.ResponseWriter, req *http.Request){
 	decode := context.Get(req, "decode")
 	var user UserModel
-	mapstructure.Decode(decode.(jwt.MapClaims), &user)
-	json.NewEncoder(w).Encode(user)
+	err := mapstructure.Decode(decode.(jwt.MapClaims), &user)
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = json.NewEncoder(w).Encode(user)
+	if err != nil {
+		fmt.Println(err)
+	}
 }

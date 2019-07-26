@@ -1,8 +1,9 @@
 package config
 
 import (
-	"github.com/BurntSushi/toml"
 	"log"
+
+	"github.com/BurntSushi/toml"
 )
 
 type Config struct {
@@ -11,7 +12,7 @@ type Config struct {
 }
 
 func (c *Config) Read() {
-	if _, err := toml.DecodeFile("src/config.toml", &c); err != nil {
+	if _, err := toml.DecodeFile("config.toml", &c); err != nil {
 		log.Fatal(err)
 	}
 }
